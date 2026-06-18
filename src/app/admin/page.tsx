@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Mail, Phone, Building2, User, Clock, LogOut } from 'lucide-react'
-import Logo from '@/components/Logo';
+import Logo from '@/components/Logo'
+import { revalidatePath } from 'next/cache'
+import DeleteButton from '@/components/DeleteButton' // Import our new button
 
 // Prevents Next.js from caching the data so you always see new enquiries immediately
 export const revalidate = 0; 
@@ -28,17 +30,31 @@ export default async function AdminDashboard() {
     redirect('/admin/login')
   }
 
+  // Server Action to handle deletion securely from the server
+  const deleteEnquiry = async (id: string) => {
+    'use server'
+    const supabase = await createClient()
+    await supabase.from('enquiries').delete().eq('id', id)
+    
+    // Instantly refresh the page to remove the deleted item from the screen
+    revalidatePath('/admin')
+  }
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           
-          <div className="flex justify-between items-center h-16">
- <Logo className="h-16 w-auto md:h-20" />
-            <h1 className="text-2xl font-bold text-[#5f0229]">
-              Admin Panel
-            </h1>
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <Logo />
+              </div>
+              <h1 className="text-2xl font-bold text-[#5f0229]">
+                Admin Panel
+              </h1>
+            </div>
+            
             <form action={handleLogout}>
               <button
                 type="submit"
@@ -79,9 +95,15 @@ export default async function AdminDashboard() {
                     <User className="text-[#5f0229]" size={20} />
                     <span className="font-semibold text-gray-900">{enquiry.name}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock size={14} />
-                    {new Date(enquiry.submitted_at).toLocaleDateString()}
+                  
+                  {/* Date and Delete Button Grouped Together */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mr-2">
+                      <Clock size={14} />
+                      {new Date(enquiry.submitted_at).toLocaleDateString()}
+                    </div>
+                    {/* The Delete Button Component */}
+                    <DeleteButton id={enquiry.id} deleteAction={deleteEnquiry} />
                   </div>
                 </div>
 
@@ -118,12 +140,12 @@ export default async function AdminDashboard() {
           ))}
 
           {enquiries?.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+            <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
               No enquiries have been submitted yet.
             </div>
           )}
         </div>
       </main>
     </div>
- )
+  )
 }
